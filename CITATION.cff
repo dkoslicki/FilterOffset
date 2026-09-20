@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "filteroffset: data-driven filter offsets and temperature compensation for astrophotography autofocus"
+message: "If you use this software in a publication or project, please cite it."
+type: software
+authors:
+  - family-names: Koslicki
+    given-names: David
+version: 0.6.0
+date-released: "2026-09-18"
+license: MIT
+repository-code: "https://github.com/dkoslicki/filteroffset"
+keywords:
+  - astronomy
+  - astrophotography
+  - autofocus
+  - filter offsets
+  - FITS

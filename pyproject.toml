@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filteroffset"
+version = "0.6.0"
+description = "Data-driven filter offsets and temperature compensation for astrophotography autofocus, from FITS headers and independently verified star profiles."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "David Koslicki" }]
+keywords = ["astronomy", "astrophotography", "autofocus", "filter offsets", "FITS", "ASTAP", "APT"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "pandas>=2.0",
+  "matplotlib>=3.7",
+  "astropy>=5.3",
+  "click>=8.1",
+  "PyYAML>=6.0",
+  "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+# The second, independent star-profile backend. `sep` is the fast path;
+# `photutils` is used as a fallback extractor when sep is unavailable.
+# Note: the statistics (Huber M-estimation, variance inflation, bootstrap and
+# F-tests) are implemented directly on numpy/scipy, so statsmodels is not a
+# dependency.
+full = ["sep>=1.2", "photutils>=1.10"]
+# `markdown` only prettifies the HTML report; a built-in converter is used when
+# it is absent, so the HTML product never depends on it.
+html = ["markdown>=3.4"]
+dev = ["pytest>=7.4", "pytest-cov", "ruff"]
+
+[project.scripts]
+filteroffset = "filteroffset.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dkoslicki/filteroffset"
+Issues = "https://github.com/dkoslicki/filteroffset/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+filteroffset = ["templates/*.html", "templates/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+  "E501",    # long lines are wrapped by hand where that reads better
+  "B008",    # field(default_factory=...) in dataclasses is idiomatic
+  "SIM108",  # a ternary is not always clearer than if/else
+  # Several zips pair a fixed axes grid against a shorter data sequence and
+  # rely on zip truncating; strict=True would turn that into a runtime error.
+  "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "F841"]

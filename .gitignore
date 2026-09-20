@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# Data must never be committed. Frames are large and are not ours to publish.
+# Belt and braces: every FITS-ish extension is ignored wherever it appears,
+# AND the directories such frames usually live in are ignored wholesale, so a
+# stray uncompressed frame or sidecar cannot slip in.
+# ---------------------------------------------------------------------------
+
+# Frame files, anywhere
+*.fit
+*.fits
+*.fts
+*.fit.fz
+*.fits.fz
+*.fts.fz
+*.xisf
+*.cr2
+*.cr3
+*.nef
+*.arw
+*.dng
+*.ser
+*.avi
+
+# Directories of frames (any depth)
+lights/
+Lights/
+darks/
+Darks/
+flats/
+Flats/
+bias/
+Bias/
+subs/
+Subs/
+frames/
+Frames/
+data/
+Data/
+raw/
+Raw/
+OtherLights/
+BodesLights/
+CherrySprings/
+combined/
+Combined/
+**/lights/
+**/darks/
+**/flats/
+**/bias/
+
+# Analysis output directories
+out/
+Out/
+*Out/
+*_out/
+*-out/
+output/
+results/
+report/
+filteroffset_out/
+
+# Caches and sidecars
+*.filteroffset-cache.sqlite
+.filteroffset_cache/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.ini
+*.wcs
+*.csv.astap
+
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual envs
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

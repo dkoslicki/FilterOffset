@@ -1,0 +1,138 @@
+# filteroffset configuration.
+#
+# Every key is optional; the values shown are the defaults unless noted.
+# Generate a bare copy with:  filteroffset config myconfig.yaml
+# Run it with:                filteroffset run lights --config myconfig.yaml
+# Command-line options override anything set here.
+
+inputs: ["lights"]              # directories or files to analyse
+outdir: "filteroffset_out"
+recursive: true
+cache: null                     # default: <outdir>/cache.sqlite
+
+# Which star-profile engines to run. Both is recommended: they are independent
+# implementations, and their disagreement is itself a diagnostic.
+backends: ["astap", "internal"]
+primary_backend: "internal"     # drives QC and the star-size model
+metric: "hfd_median_bright"     # star-size column to model
+image_types: ["light"]          # substring match on IMAGETYP; null keeps everything
+
+workers: null                   # default: chosen from available memory
+theme: "light"                  # or "dark", for the plots
+# "filter"     - each filter drawn in the colour of the light it passes
+#                (L grey, R red, G green, B blue; narrowband dashed:
+#                Ha red, SII orange, OIII teal). Marker shapes differ too, so
+#                identity never rests on colour alone.
+# "accessible" - a colour-blind-validated categorical palette instead.
+palette: "filter"
+progress: true
+
+# Focuser travel per step, in microns. Leave null if unknown: capture software
+# only ever needs steps, and the report then prints a conversion table across
+# plausible step sizes instead. A focus sweep can calibrate this from the data,
+# which is better than the motor's nominal figure - what matters is drawtube
+# travel per step, and that depends on the telescope.
+step_microns: null
+
+# Map non-standard FITS keywords onto internal fields. Tried before the
+# built-in aliases, so this also lets you override a bad guess.
+extra_aliases: {}
+#   focus_pos: ["MYFOCUSER"]
+#   focus_temp: ["TUBETEMP"]
+
+# --- star measurement -------------------------------------------------------
+profiles:
+  snr_min: 10.0
+  # "Bright" stars are defined by a flux-percentile band within each frame, not
+  # an absolute SNR cut: ASTAP and sep report SNR on different scales, so any
+  # absolute threshold would silently mean different things. The upper bound
+  # excludes saturated cores, whose HFD is inflated.
+  bright_lo_pct: 70.0
+  bright_hi_pct: 97.0
+  bright_min_stars: 20
+  saturation_frac: 0.90
+  full_well_adu: 65535.0
+  center_radius_frac: 0.40      # field curvature and tilt inflate corner HFD
+  crop: 3000                    # centred crop for the internal backend; null = full frame
+  min_stars: 25
+  detect_sigma: 5.0
+  min_area: 5                   # minimum connected pixels above threshold
+  filter_fwhm: 3.0              # matched-filter FWHM applied before detection
+  hfd_max: 40.0
+  # Hot pixels and cosmic rays are bright, so no signal-to-noise cut removes
+  # them; they are only ~1 px across, so the test has to be about size. Each
+  # frame's own bright stars set the scale and anything far below it is
+  # discarded. On long narrowband subs over a dark sky this can be most of the
+  # detections, and leaving them in drags the median star size below a pixel.
+  min_hfd_frac_of_psf: 0.55
+  hfd_min_abs: 1.0
+  psf_scale_pct: 90.0
+  # The relative floor suits backends whose measured size does not depend on
+  # brightness. ASTAP's does, by construction, so it gets the absolute floor
+  # only (and needs no more: it validates star profiles during detection).
+  relative_floor_backends: ["internal"]
+
+# --- recovering the autofocus structure -------------------------------------
+blocks:
+  session_gap_hours: 8.0        # gap that separates one night from the next
+                                # (campaigns often wait days or weeks between
+                                # nights; each is analysed on its own time axis)
+  # Dead time (excluding the exposure) after which a fresh autofocus is assumed
+  # even though the position came back unchanged. Expressed as dead time rather
+  # than wall-clock, so it means the same thing for 30 s and 1800 s subs.
+  block_split_dead_time_s: 240.0
+  block_gap_minutes: 45.0       # fallback split when EXPTIME is missing
+  af_min_dead_time_s: 60.0      # dead time taken as evidence autofocus ran
+  position_tolerance: 0.0       # treat positions within N steps as equal
+  config_columns: ["instrument", "telescope", "xbinning", "ybinning", "gain", "offset"]
+
+# --- quality control --------------------------------------------------------
+# Thresholds are relative to the same filter on the same night wherever
+# possible: absolute limits on star counts or sizes are meaningless across
+# different filters, targets and skies.
+qc:
+  star_count_frac: 0.55         # fail below this fraction of the nightly median
+  star_count_warn_frac: 0.75
+  min_stars: 25
+  ecc_fail: 0.60                # trailing from guiding, wind or tracking
+  ecc_warn: 0.50
+  hfd_fail_ratio: 1.35
+  hfd_warn_ratio: 1.18
+  background_z: 5.0
+  backend_disagree_frac: 0.25
+  saturation_rise_px: 0.35
+  min_frames_per_block: 1
+
+# --- the model --------------------------------------------------------------
+model:
+  temp_column: "auto"           # prefers focus_temp, then ambient_temp, then ccd_temp
+  temp_at_block_start: true     # temperature nearest in time to the autofocus run
+  reference_filter: null        # null = best-sampled filter, preferring L, G, R, B
+  method: "auto"                # "ols", "robust" (Huber), or robust once >= 8 blocks
+  # Per-night intercepts.
+  #   "auto" (default) - test the focuser's zero point and add them only if
+  #                      nights genuinely jump (see below)
+  #   "on"             - always; safe, but a filter that never shares a night
+  #                      with the others then has no measurable offset
+  #   "off"            - always trust absolute focuser positions
+  #
+  # The assumption behind "auto" is that the imaging train is NOT disturbed
+  # between sessions: no camera re-seated, no spacers changed, no focuser
+  # rehomed. An absolute encoder then puts every night on one scale, which is
+  # what lets a filter used alone on its own nights be tied to the rest.
+  night_effects: "auto"
+  # Where the steps/C figure comes from. "within_night" uses only variation
+  # inside each night - what temperature compensation actually corrects, and
+  # immune to anything that differs between nights. "pooled" also uses
+  # between-night contrasts. "auto" picks within-night when it can.
+  temp_from: "auto"
+  # Linear drift of focus with date, absorbing slow settling with one parameter
+  # instead of a free level per night. "auto" adds it when the drift test finds
+  # a trend; true/false force it.
+  drift_term: "auto"
+  per_filter_slopes: true       # test whether each filter needs its own steps/C
+  altitude_term: false          # probe flexure; usually collinear on one night
+  thermal_lag_minutes: "fit"    # null, a number, or "fit" to profile it
+  bootstrap: 2000
+  confidence: 0.95
+  random_seed: 12345
